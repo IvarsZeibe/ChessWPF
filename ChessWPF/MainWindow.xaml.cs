@@ -36,8 +36,19 @@ namespace ChessWPF
             _board = new ChessBoard();
             CreateChessGrid();
             RefreshChessGrid();
-            ResetButton.Click += (s, e) => { _board.ResetGame(); RefreshChessGrid(); };
-            LoadButton.Click += (s, e) => { _board.Load(FEN.Text); RefreshChessGrid(); };
+            ResetButton.Click += (s, e) => { _board = new ChessBoard(); RefreshChessGrid(); };
+            LoadButton.Click += (s, e) => 
+            {
+                try
+                {
+                    _board = new ChessBoard(FEN.Text); RefreshChessGrid();
+                    FEN.Background = Brushes.White;
+                }
+                catch (Exception ex)
+                {
+                    FEN.Background = Brushes.Salmon;
+                }
+            };
         }
         private void CreateChessGrid()
         {
@@ -73,9 +84,9 @@ namespace ChessWPF
                 if ((x, y) == _startPos)
                     button.Background = Brushes.DarkTurquoise;
                 else if (validMoves.Contains((x, y)))
-                    button.Background = Brushes.MistyRose;
+                    button.Background = Brushes.LightGreen;
                 else if (kingDeadMoves.Contains((x, y)))
-                    button.Background = Brushes.Gray;
+                    button.Background = Brushes.MistyRose;
                 else
                     button.Background = (y + x) % 2 == 1 ? Brushes.DarkKhaki : Brushes.LightYellow;
             }
@@ -109,16 +120,20 @@ namespace ChessWPF
             switch (_gameStatus)
             {
                 case GameStatus.InProgress:
-                    Message.Text = (_board.IsWhiteTurn ? "White" : "Black") + " player's turn";
+                    Message.Content = (_board.IsWhiteTurn ? "White" : "Black") + " player's turn.";
+                    if (_board.IsCheckForCurrentTeam)
+                    {
+                        Message.Content += "\nCheck!";
+                    }
                     break;
                 case GameStatus.WhiteWins:
-                    Message.Text = "White Wins!";
+                    Message.Content = "White Wins!";
                     break;
                 case GameStatus.BlackWins:
-                    Message.Text = "Black Wins!";
+                    Message.Content = "Black Wins!";
                     break;
                 case GameStatus.Stalemate:
-                    Message.Text = "Stalemate!";
+                    Message.Content = "Stalemate!";
                     break;
             }
         }
@@ -138,13 +153,13 @@ namespace ChessWPF
                     x = 2;
                     break;
                 case (int)Piece.King:
-                    x = 0;
+                    x = 1;
                     break;
                 case (int)Piece.Knight:
                     x = 3;
                     break;
                 case (int)Piece.Queen:
-                    x = 1;
+                    x = 0;
                     break;
                 case (int)Piece.Bishop:
                     x = 4;

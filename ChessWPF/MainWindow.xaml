@@ -9,7 +9,7 @@
     <DockPanel>
         <Grid Name="ChessGrid" Height="500" Width="500"/>
         <DockPanel LastChildFill="False">
-            <TextBox DockPanel.Dock="Top" FontSize="40" TextWrapping="Wrap" Name="Message"/>
+            <Label DockPanel.Dock="Top" FontSize="30" Name="Message"/>
             <Button DockPanel.Dock="Bottom" Margin="10 10 10 40" Height="50" x:Name="ResetButton">Reset</Button>
             <Grid DockPanel.Dock="Bottom" Margin="10 10 10 10" Height="50">
                 <Grid.ColumnDefinitions>

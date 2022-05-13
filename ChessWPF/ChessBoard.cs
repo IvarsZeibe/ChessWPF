@@ -7,8 +7,8 @@ using System.Xaml;
 
 namespace ChessWPF
 {
-    // team pieceType
-    // 0    000
+    // hasMoven team pieceType
+    // 0-hasnt  0    000
     internal enum Piece : int
     {
         Empty   = 0b000,
@@ -31,29 +31,29 @@ namespace ChessWPF
         public int Height { get; } = 8;
         public int Width { get; } = 8;
         public bool IsWhiteTurn { get; private set; } = true;
-        private int[,] _board = new int[8,8];
+        public bool IsCheckForCurrentTeam { get; private set; }
+        private int[,] _board = new int[8, 8];
         private Dictionary<(int x, int y), List<(int x, int y)>> _cachedValidMoves = new();
-        public ChessBoard()
+        public ChessBoard(int[,]? board = null)
         {
-            ResetGame();
-        }
-        public void ResetGame()
-        {
-            _board = new int[,]
+            _board = board ?? new int[,]
             {
-                { 0b01110, 0b01011, 0b01010, 0b01101, 0b01100, 0b01010, 0b01011, 0b01110 },
+                { 0b01110, 0b01011, 0b01010, 0b01100, 0b01101, 0b01010, 0b01011, 0b01110 },
                 { 0b01001, 0b01001, 0b01001, 0b01001, 0b01001, 0b01001, 0b01001, 0b01001 },
                 { 0, 0, 0, 0, 0, 0, 0, 0 },
                 { 0, 0, 0, 0, 0, 0, 0, 0 },
                 { 0, 0, 0, 0, 0, 0, 0, 0 },
                 { 0, 0, 0, 0, 0, 0, 0, 0 },
                 { 0b00001, 0b00001, 0b00001, 0b00001, 0b00001, 0b00001, 0b00001, 0b00001 },
-                { 0b00110, 0b00011, 0b00010, 0b00101, 0b00100, 0b00010, 0b00011, 0b00110 }
+                { 0b00110, 0b00011, 0b00010, 0b00100, 0b00101, 0b00010, 0b00011, 0b00110 }
             };
-            IsWhiteTurn = true;
+            IsCheckForCurrentTeam = IsCheckFor(IsWhiteTurn);
         }
-        public void Load(string fen)
+        public ChessBoard(string fen) : this(ConvertFEN(fen)) { }
+
+        private static int[,] ConvertFEN(string fen)
         {
+            int[,] board = new int[8, 8];
             int y = 0;
             int x = 0;
             foreach (char l in fen)
@@ -63,43 +63,40 @@ namespace ChessWPF
                 switch (Char.ToLower(l))
                 {
                     case 'p':
-                        _board[y, x] = (int)Piece.Pawn + teamFlag;
-                        x++;
+                        board[y, x] = (int)Piece.Pawn | teamFlag;
                         break;
                     case 'r':
-                        _board[y, x] = (int)Piece.Rook + teamFlag;
-                        x++;
+                        board[y, x] = (int)Piece.Rook | teamFlag;
                         break;
                     case 'n':
-                        _board[y, x] = (int)Piece.Knight + teamFlag;
-                        x++;
+                        board[y, x] = (int)Piece.Knight | teamFlag;
                         break;
                     case 'b':
-                        _board[y, x] = (int)Piece.Bishop + teamFlag;
-                        x++;
+                        board[y, x] = (int)Piece.Bishop | teamFlag;
                         break;
                     case 'q':
-                        _board[y, x] = (int)Piece.Queen + teamFlag;
-                        x++;
+                        board[y, x] = (int)Piece.Queen | teamFlag;
                         break;
                     case 'k':
-                        _board[y, x] = (int)Piece.King + teamFlag;
-                        x++;
+                        board[y, x] = (int)Piece.King | teamFlag;
                         break;
                     case '/':
                         y++;
                         x = 0;
-                        break;
+                        continue;
                     default:
-                        for(int i = 0; i < l - '0'; i++)
+                        for (int i = 0; i < l - '0'; i++)
                         {
-                            _board[y, x] = 0;
+                            board[y, x] = 0;
                             x++;
                         }
-                        break;
+                        continue;
                 }
+                // sets flag that the piece has moved (this is for all pieces in loaded game)
+                board[y, x] |= 0b10000;
+                x++;
             }
-            IsWhiteTurn = true;
+            return board;
         }
         public GameStatus CalculateGameStatus()
         {
@@ -113,6 +110,7 @@ namespace ChessWPF
             else
                 return GameStatus.InProgress;
         }
+
         public bool TryGetPiece(int x, int y, out int pieceType, out bool isWhite)
         {
             pieceType = 0;
@@ -124,19 +122,9 @@ namespace ChessWPF
             pieceType = piece & 0b00111;
             return true;
         }
-        public bool TryMove(int x1, int y1, int x2, int y2)
+        private Piece GetType(int piece)
         {
-            List<(int x, int y)> validMoves = _cachedValidMoves.ContainsKey((x1, y1))
-                ? _cachedValidMoves[(x1, y1)]
-                : GetValidMoves(x1, y1);
-            _cachedValidMoves.Clear();
-
-            if (!validMoves.Contains((x2, y2))) return false;
-
-            _board[y2, x2] = _board[y1, x1];
-            _board[y1, x1] = 0;
-            IsWhiteTurn = !IsWhiteTurn;
-            return true;
+            return (Piece)(piece & 0b111);
         }
         private bool IsEmptyField(int x, int y)
         {
@@ -146,10 +134,80 @@ namespace ChessWPF
         {
             return TryGetPiece(x, y, out int targetType, out bool isTargetWhite) && isTargetWhite != isWhite && targetType != (int)Piece.Empty;
         }
+        private bool IsWhite(int piece)
+        {
+            return (piece & 0b1000) != 0b1000;
+        }
+        private bool HasMoved(int piece)
+        {
+            return (piece & 0b10000) == 0b10000;
+        }
         private bool IsEnemyOrEmpty(int x, int y, bool isWhite)
         {
             return TryGetPiece(x, y, out int targetType, out bool isTargetWhite) && (targetType == (int)Piece.Empty || isTargetWhite != isWhite);
         }
+
+        public bool TryMove(int x1, int y1, int x2, int y2)
+        {
+            if (x1 > 7 || x2 > 7 || x1 < 0 || x2 < 0 || y1 > 7 || y2 > 7 || y1 < 0 || y2 < 0)
+                return false;
+
+            if (!TryCastle(x1, y1, x2, y2))
+            {
+                List<(int x, int y)> validMoves = _cachedValidMoves.ContainsKey((x1, y1))
+                    ? _cachedValidMoves[(x1, y1)]
+                    : GetValidMoves(x1, y1);
+                _cachedValidMoves.Clear();
+
+                if (!validMoves.Contains((x2, y2))) return false;
+                _board[y2, x2] = _board[y1, x1] | (1 << 4);
+                _board[y1, x1] = 0;
+            }
+
+            IsWhiteTurn = !IsWhiteTurn;
+            IsCheckForCurrentTeam = IsCheckFor(IsWhiteTurn);
+            return true;
+        }
+        private bool TryCastle(int x1, int y1, int x2, int y2)
+        {
+            // Check if is castling and castle if true
+            int piece = _board[y1, x1];
+            int targetPiece = _board[y2, x2];
+            if (GetType(piece) == Piece.King && GetType(targetPiece) == Piece.Rook &&
+                !HasMoved(piece) && !HasMoved(targetPiece) &&
+                IsWhite(piece) == IsWhite(targetPiece) &&
+                !IsCheckFor(IsWhite(piece)))
+            {
+                if (x2 == 0)
+                {
+                    for (int i = 1; i < 4; i++)
+                    {
+                        if (!IsEmptyField(x1 - i, y1))
+                            return false;
+                    }
+                    _board[y1, x1 - 2] = _board[y1, x1] | (1 << 5);
+                    _board[y1, x1] = 0;
+                    _board[y1, x1 - 1] = _board[y2, x2] | (1 << 5);
+                    _board[y2, x2] = 0;
+                    return true;
+                }
+                else if (x2 == 7)
+                {
+                    for (int i = 1; i < 3; i++)
+                    {
+                        if (!IsEmptyField(x1 + i, y1))
+                            return false;
+                    }
+                    _board[y1, x1 + 2] = _board[y1, x1] | (1 << 4);
+                    _board[y1, x1] = 0;
+                    _board[y1, x1 + 1] = _board[y2, x2] | (1 << 4);
+                    _board[y2, x2] = 0;
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public List<(int x, int y)> GetValidMoves(int x, int y, bool checkForCheckMate = true)
         {
             return GetValidMoves(x, y, out _, checkForCheckMate);
@@ -223,18 +281,19 @@ namespace ChessWPF
                     int targetPiece = _board[move.y, move.x];
                     _board[move.y, move.x] = _board[y, x];
                     _board[y, x] = 0;
+                    // checks if is check for newly made move
                     if (!IsCheckFor(isWhite))
                         fullyValidMoves.Add(move);
                     _board[y, x] = _board[move.y, move.x];
                     _board[move.y, move.x] = targetPiece;
                 }
                 kingDeadMoves = validMoves.Except(fullyValidMoves).ToList();
+                _cachedValidMoves[(x, y)] = fullyValidMoves;
                 return fullyValidMoves;
             }
             kingDeadMoves = new();
             return validMoves;
         }
-
         private List<(int x, int y)> GetValidSlidingMoves(int x, int y, bool isWhite, List<(int x, int y)> directions, int maxDistance = 8)
         {
             var validMoves = new List<(int x, int y)>();
@@ -270,7 +329,7 @@ namespace ChessWPF
             return validMoves;
         }
 
-        public bool IsCheckFor(bool isWhite)
+        private bool IsCheckFor(bool isWhite)
         {
             for (int x = 0; x < Width; x++)
                 for (int y = 0; y < Height; y++)
@@ -279,7 +338,7 @@ namespace ChessWPF
                     if (isWhite == isCurrentPieceWhite) continue;
                     if (pieceType == (int)Piece.Empty) continue;
                     var moves = GetValidMoves(x, y, false);
-                    if (moves.Any(move => !TryGetPiece(move.x, move.y, out int pieceType, out _) || pieceType == (int)Piece.King))
+                    if (moves.Any(move => !TryGetPiece(move.x, move.y, out int targetType, out bool isTargetWhite) || (targetType == (int)Piece.King && isTargetWhite != isCurrentPieceWhite)))
                         return true;
                 }
             return false;
