@@ -21,81 +21,109 @@ namespace ChessWPF
     /// </summary>
     public partial class MainWindow : Window
     {
-        BitmapImage chessPieceTilemap;
-        Dictionary<(int, int), CroppedBitmap> chessPieceImages = new Dictionary<(int, int), CroppedBitmap>();
-        ChessBoard board;
-        int tileSize = 60;
-        (int x, int y)? startPos = null;
-        (int x, int y)? targetPos = null;
+        private BitmapImage _chessPieceTilemap;
+        private Dictionary<(int, int), CroppedBitmap> _chessPieceImages = new();
+        private ChessBoard _board;
+        private int _tileSize = 60;
+        private (int x, int y)? _startPos;
+        private List<(int x, int y)> validMoves = new();
+        private List<(int x, int y)> kingDeadMoves = new();
+        private GameStatus _gameStatus;
         public MainWindow()
         {
             InitializeComponent();
-            chessPieceTilemap = new BitmapImage(new Uri(Environment.CurrentDirectory + "/ChessPiecesArray.png"));
+            _chessPieceTilemap = new BitmapImage(new Uri(Environment.CurrentDirectory + "/ChessPiecesArray.png"));
+            _board = new ChessBoard();
+            CreateChessGrid();
+            RefreshChessGrid();
+            ResetButton.Click += (s, e) => { _board.ResetGame(); RefreshChessGrid(); };
+            LoadButton.Click += (s, e) => { _board.Load(FEN.Text); RefreshChessGrid(); };
+        }
+        private void CreateChessGrid()
+        {
             for (int i = 0; i < 8; i++)
             {
                 ChessGrid.ColumnDefinitions.Add(new ColumnDefinition());
                 ChessGrid.RowDefinitions.Add(new RowDefinition());
             }
-            board = new ChessBoard();
-            UpdateChessGrid();
-        }
-        void UpdateChessGrid()
-        {
-            ChessGrid.Children.Clear();
-            for (int y = 0; y < board.Height; y++)
-                for(int x = 0; x < board.Width; x++)
-                {
-                    board.TryGetPiece(x, y, out int pieceType, out bool isWhite);
-                    Button button = new Button
-                    {
-                        Content = new Image() { Source = GetPieceImage(pieceType, isWhite)},
-                        Name = "btn"
-                    };
-                    button.Click += ButtonClicked;
-                    Grid.SetColumn(button, x);
-                    Grid.SetRow(button, y);
-                    if ((y + x) % 2 == 1) 
-                    {
-                        button.Background = new SolidColorBrush(Color.FromRgb(100, 100, 0));
-                    }
-                    ChessGrid.Children.Add(button);
-                }
-        }
-        void ButtonClicked(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button)
+            for (int y = 0; y < _board.Height; y++)
+            for (int x = 0; x < _board.Width; x++)
             {
-                Button button = sender as Button;
-                int x = Grid.GetColumn(button);
-                int y = Grid.GetRow(button);
-                Message.Text = "";
-                if (startPos is null)
+                Button button = new Button
                 {
-                    board.TryGetPiece(x, y, out int pieceType, out bool isWhite);
-                    if (pieceType != 0 && isWhite == board.IsWhiteTurn)
-                    {
-                        startPos = (x, y);
-                        button.Background = Brushes.Gray;
-                    }
-                }
-                else
-                {
-                    targetPos = (x, y);
-                    if (board.Move(startPos.Value.x, startPos.Value.y, targetPos.Value.x, targetPos.Value.y))
-                    {
-                        Message.Text = "successfully moved";
-                    }
-                    else
-                    {
-                        Message.Text = "move failed";
-                    }
-                    UpdateChessGrid();
-                    startPos = null;
-                    targetPos = null;
-                }
+                    Name = "btn",
+                    Content = new Image()
+                };
+                button.Click += ButtonClicked;
+                Grid.SetColumn(button, x);
+                Grid.SetRow(button, y);
+                ChessGrid.Children.Add(button);
             }
         }
-        CroppedBitmap GetPieceImage(int pieceType, bool isWhite)
+        private void RefreshChessGrid()
+        {
+            foreach (object? children in ChessGrid.Children)
+            {
+                if (children is not Button button) continue;
+                int x = Grid.GetColumn(button);
+                int y = Grid.GetRow(button);
+                _board.TryGetPiece(x, y, out int pieceType, out bool isWhite);
+                if (button.Content is not Image image) continue;
+                image.Source = GetPieceImage(pieceType, isWhite);
+                if ((x, y) == _startPos)
+                    button.Background = Brushes.DarkTurquoise;
+                else if (validMoves.Contains((x, y)))
+                    button.Background = Brushes.MistyRose;
+                else if (kingDeadMoves.Contains((x, y)))
+                    button.Background = Brushes.Gray;
+                else
+                    button.Background = (y + x) % 2 == 1 ? Brushes.DarkKhaki : Brushes.LightYellow;
+            }
+            _gameStatus = _board.CalculateGameStatus();
+            UpdateMessage();
+        }
+        private void ButtonClicked(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button) return;
+            int x = Grid.GetColumn(button);
+            int y = Grid.GetRow(button);
+            if (_startPos is null)
+            {
+                if (!_board.TryGetPiece(x, y, out int pieceType, out bool isWhite)) return;
+                if (pieceType == 0 || isWhite != _board.IsWhiteTurn) return;
+
+                _startPos = (x, y);
+                validMoves = _board.GetValidMoves(x, y, out kingDeadMoves);
+            }
+            else
+            {
+                _board.TryMove(_startPos.Value.x, _startPos.Value.y, x, y);
+                validMoves.Clear();
+                kingDeadMoves.Clear();
+                _startPos = null;
+            }
+            RefreshChessGrid();
+        }
+        void UpdateMessage()
+        {
+            switch (_gameStatus)
+            {
+                case GameStatus.InProgress:
+                    Message.Text = (_board.IsWhiteTurn ? "White" : "Black") + " player's turn";
+                    break;
+                case GameStatus.WhiteWins:
+                    Message.Text = "White Wins!";
+                    break;
+                case GameStatus.BlackWins:
+                    Message.Text = "Black Wins!";
+                    break;
+                case GameStatus.Stalemate:
+                    Message.Text = "Stalemate!";
+                    break;
+            }
+        }
+        
+        private CroppedBitmap GetPieceImage(int pieceType, bool isWhite)
         {
             int y = isWhite ? 1 : 0;
             int x = 0;
@@ -122,12 +150,12 @@ namespace ChessWPF
                     x = 4;
                     break;
             }
-            Int32Rect rect = new Int32Rect(x * tileSize, y * tileSize, tileSize, tileSize);
+            Int32Rect rect = new Int32Rect(x * _tileSize, y * _tileSize, _tileSize, _tileSize);
             
-            if (chessPieceImages.ContainsKey((x, y)))
-                return chessPieceImages[(x, y)];
-            chessPieceImages[(x, y)] = new CroppedBitmap(chessPieceTilemap, rect);
-            return chessPieceImages[(x, y)];
+            if (_chessPieceImages.ContainsKey((x, y)))
+                return _chessPieceImages[(x, y)];
+            _chessPieceImages[(x, y)] = new CroppedBitmap(_chessPieceTilemap, rect);
+            return _chessPieceImages[(x, y)];
         }
     }
 }
