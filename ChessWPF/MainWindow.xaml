@@ -9,9 +9,66 @@
     <DockPanel>
         <Grid Name="ChessGrid" Height="500" Width="500"/>
         <DockPanel LastChildFill="False">
-            <Label DockPanel.Dock="Top" FontSize="30" Name="Message"/>
-            <Button DockPanel.Dock="Bottom" Margin="10 10 10 40" Height="50" x:Name="ResetButton">Reset</Button>
-            <Grid DockPanel.Dock="Bottom" Margin="10 10 10 10" Height="50">
+            <Label DockPanel.Dock="Top" FontSize="30" Name="Message" Content=""/>
+            <Label DockPanel.Dock="Top" FontSize="30" Name="IsCheck" Content=""/>
+            <Label DockPanel.Dock="Top" FontSize="18" Content="Captured whites:"/>
+            <Grid DockPanel.Dock="Top" Height="70" x:Name="CapturedWhites">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition></RowDefinition>
+                    <RowDefinition></RowDefinition>
+                </Grid.RowDefinitions>
+            </Grid>
+            <Label DockPanel.Dock="Top" FontSize="18" Content="Captured blacks:"/>
+            <Grid DockPanel.Dock="Top" Height="70" x:Name="CapturedBlacks">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition></RowDefinition>
+                    <RowDefinition></RowDefinition>
+                </Grid.RowDefinitions>
+            </Grid>
+            <Grid DockPanel.Dock="Top" Width="240" Height="40" Visibility="Hidden" Name="PromotionChoice">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Label Grid.Column="0" FontSize="18" VerticalAlignment="Center" FontWeight="Bold">Choose: </Label>
+                <Button Grid.Column="1" Name="QueenButton">
+                    <Image></Image>
+                </Button>
+                <Button Grid.Column="2" Name="KnightButton">
+                    <Image></Image>
+                </Button>
+                <Button Grid.Column="3" Name="RookButton">
+                    <Image></Image>
+                </Button>
+                <Button Grid.Column="4" Name="BishopButton">
+                    <Image></Image>
+                </Button>
+            </Grid>
+            <Button DockPanel.Dock="Bottom" Margin="10 10 10 40" Height="40" x:Name="ResetButton">Reset</Button>
+            <Grid DockPanel.Dock="Bottom" Margin="10 10 10 10" Height="40">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*"></ColumnDefinition>
                     <ColumnDefinition Width="7*"></ColumnDefinition>

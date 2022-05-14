@@ -41,14 +41,58 @@ namespace ChessWPF
             {
                 try
                 {
-                    _board = new ChessBoard(FEN.Text); RefreshChessGrid();
+                    _board = new ChessBoard(FEN.Text);
+                    RefreshChessGrid();
                     FEN.Background = Brushes.White;
+                    CapturedBlacks.Children.Clear();
+                    CapturedWhites.Children.Clear();
                 }
                 catch (Exception ex)
                 {
                     FEN.Background = Brushes.Salmon;
                 }
             };
+            QueenButton.Click += PromotionButton;
+            KnightButton.Click += PromotionButton;
+            RookButton.Click += PromotionButton;
+            BishopButton.Click += PromotionButton;
+        }
+        void ShowPromotionChoice(bool isWhite)
+        {
+            if (QueenButton.Content is Image image1)
+                image1.Source = GetPieceImage((int)Piece.Queen, isWhite);
+            if (KnightButton.Content is Image image2)
+                image2.Source = GetPieceImage((int)Piece.Knight, isWhite);
+            if (RookButton.Content is Image image3)
+                image3.Source = GetPieceImage((int)Piece.Rook, isWhite);
+            if (BishopButton.Content is Image image4)
+                image4.Source = GetPieceImage((int)Piece.Bishop, isWhite);
+            PromotionChoice.Visibility = Visibility.Visible;
+        }
+        void PromotionButton(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button)
+            {
+                Piece pieceType = Piece.Empty;
+                switch (button.Name)
+                {
+                    case "QueenButton":
+                        pieceType = Piece.Queen;
+                        break;
+                    case "KnightButton":
+                        pieceType = Piece.Knight;
+                        break;
+                    case "RookButton":
+                        pieceType = Piece.Rook;
+                        break;
+                    case "BishopButton":
+                        pieceType = Piece.Bishop;
+                        break;
+                }
+                _board.TryPromote(pieceType);
+            }
+            PromotionChoice.Visibility = Visibility.Hidden;
+            RefreshChessGrid();
         }
         private void CreateChessGrid()
         {
@@ -87,6 +131,10 @@ namespace ChessWPF
                     button.Background = Brushes.LightGreen;
                 else if (kingDeadMoves.Contains((x, y)))
                     button.Background = Brushes.MistyRose;
+                else if (_board.GetLastMovedLocation() is (int, int) position && position == (x, y))
+                {
+                    button.Background = Brushes.Gold;
+                }
                 else
                     button.Background = (y + x) % 2 == 1 ? Brushes.DarkKhaki : Brushes.LightYellow;
             }
@@ -95,6 +143,7 @@ namespace ChessWPF
         }
         private void ButtonClicked(object sender, RoutedEventArgs e)
         {
+            if (_board.IsPromoting) return;
             if (sender is not Button button) return;
             int x = Grid.GetColumn(button);
             int y = Grid.GetRow(button);
@@ -108,7 +157,30 @@ namespace ChessWPF
             }
             else
             {
-                _board.TryMove(_startPos.Value.x, _startPos.Value.y, x, y);
+                if (_board.TryMove(_startPos.Value.x, _startPos.Value.y, x, y, out int capturedPiece))
+                {
+                    if (_board.GetType(capturedPiece) != Piece.Empty)
+                    {
+                        var pieceImage = new Image() { Source = GetPieceImage((int)_board.GetType(capturedPiece), _board.IsWhite(capturedPiece)) };
+                        // if is white turn, then a piece was captured by black player
+                        if (_board.IsWhiteTurn)
+                        {
+                            Grid.SetRow(pieceImage, CapturedBlacks.Children.Count / CapturedBlacks.ColumnDefinitions.Count);
+                            Grid.SetColumn(pieceImage, CapturedBlacks.Children.Count % CapturedBlacks.ColumnDefinitions.Count);
+                            CapturedBlacks.Children.Add(pieceImage);
+                        }
+                        else
+                        {
+                            Grid.SetRow(pieceImage, CapturedWhites.Children.Count / CapturedWhites.ColumnDefinitions.Count);
+                            Grid.SetColumn(pieceImage, CapturedWhites.Children.Count % CapturedWhites.ColumnDefinitions.Count);
+                            CapturedWhites.Children.Add(pieceImage);
+                        }
+                    }
+                }
+                if (_board.IsPromoting)
+                {
+                    ShowPromotionChoice(!_board.IsWhiteTurn);
+                }
                 validMoves.Clear();
                 kingDeadMoves.Clear();
                 _startPos = null;
@@ -120,10 +192,21 @@ namespace ChessWPF
             switch (_gameStatus)
             {
                 case GameStatus.InProgress:
-                    Message.Content = (_board.IsWhiteTurn ? "White" : "Black") + " player's turn.";
-                    if (_board.IsCheckForCurrentTeam)
+                    bool temp = _board.IsWhiteTurn;
+                    if (_board.IsPromoting)
+                        temp = !temp;
+                    Message.Content = (temp ? "White" : "Black") + " player's turn.";
+                    if (_board.IsPromoting)
                     {
-                        Message.Content += "\nCheck!";
+                        IsCheck.Content = "Choose promotion!";
+                    }
+                    else if (_board.IsCheckForCurrentTeam)
+                    {
+                        IsCheck.Content = "Check!";
+                    }
+                    else
+                    {
+                        IsCheck.Content = "";
                     }
                     break;
                 case GameStatus.WhiteWins:
