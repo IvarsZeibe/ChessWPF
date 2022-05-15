@@ -82,11 +82,11 @@ namespace ChessWPF
                     {
                         if (_board.IsWhiteTurn)
                         {
-                            CapturedWhites.Children.RemoveAt(CapturedWhites.Children.Count - 1);
+                            CapturedBlacks.Children.RemoveAt(CapturedBlacks.Children.Count - 1);
                         }
                         else
                         {
-                            CapturedBlacks.Children.RemoveAt(CapturedBlacks.Children.Count - 1);
+                            CapturedWhites.Children.RemoveAt(CapturedWhites.Children.Count - 1);
                         }
                     }
                 }
@@ -204,15 +204,15 @@ namespace ChessWPF
                         // if is white turn, then a piece was captured by black player
                         if (_board.IsWhiteTurn)
                         {
-                            Grid.SetRow(pieceImage, CapturedBlacks.Children.Count / CapturedBlacks.ColumnDefinitions.Count);
-                            Grid.SetColumn(pieceImage, CapturedBlacks.Children.Count % CapturedBlacks.ColumnDefinitions.Count);
-                            CapturedBlacks.Children.Add(pieceImage);
-                        }
-                        else
-                        {
                             Grid.SetRow(pieceImage, CapturedWhites.Children.Count / CapturedWhites.ColumnDefinitions.Count);
                             Grid.SetColumn(pieceImage, CapturedWhites.Children.Count % CapturedWhites.ColumnDefinitions.Count);
                             CapturedWhites.Children.Add(pieceImage);
+                        }
+                        else
+                        {
+                            Grid.SetRow(pieceImage, CapturedBlacks.Children.Count / CapturedBlacks.ColumnDefinitions.Count);
+                            Grid.SetColumn(pieceImage, CapturedBlacks.Children.Count % CapturedBlacks.ColumnDefinitions.Count);
+                            CapturedBlacks.Children.Add(pieceImage);
                         }
                     }
                 }
