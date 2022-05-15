@@ -56,6 +56,31 @@ namespace ChessWPF
             KnightButton.Click += PromotionButton;
             RookButton.Click += PromotionButton;
             BishopButton.Click += PromotionButton;
+            RevertButton.Click += (s, e) =>
+            {
+                if (_startPos != null) return;
+                if (_board.IsPromoting)
+                {
+                    PromotionChoice.Visibility = Visibility.Hidden;
+                }
+                (bool wasMoved, bool wasKilled) = _board.WasPieceRemovedLastMove();
+                if (wasMoved)
+                {
+                    _board.RevertToPreviousState();
+                    RefreshChessGrid();
+                    if (wasKilled)
+                    {
+                        if (_board.IsWhiteTurn)
+                        {
+                            CapturedWhites.Children.RemoveAt(CapturedWhites.Children.Count - 1);
+                        }
+                        else
+                        {
+                            CapturedBlacks.Children.RemoveAt(CapturedBlacks.Children.Count - 1);
+                        }
+                    }
+                }
+            };
         }
         void ShowPromotionChoice(bool isWhite)
         {
@@ -131,7 +156,11 @@ namespace ChessWPF
                     button.Background = Brushes.LightGreen;
                 else if (kingDeadMoves.Contains((x, y)))
                     button.Background = Brushes.MistyRose;
-                else if (_board.GetLastMovedLocation() is (int, int) position && position == (x, y))
+                else if (_board.GetLastMovedFrom() is (int, int) position && position == (x, y))
+                {
+                    button.Background = Brushes.Gold;
+                }
+                else if (_board.TryGetLastMovedTo(out position) && position == (x, y))
                 {
                     button.Background = Brushes.Gold;
                 }
@@ -198,15 +227,15 @@ namespace ChessWPF
                     Message.Content = (temp ? "White" : "Black") + " player's turn.";
                     if (_board.IsPromoting)
                     {
-                        IsCheck.Content = "Choose promotion!";
+                        Message2.Content = "Choose promotion!";
                     }
                     else if (_board.IsCheckForCurrentTeam)
                     {
-                        IsCheck.Content = "Check!";
+                        Message2.Content = "Check!";
                     }
                     else
                     {
-                        IsCheck.Content = "";
+                        Message2.Content = "";
                     }
                     break;
                 case GameStatus.WhiteWins:

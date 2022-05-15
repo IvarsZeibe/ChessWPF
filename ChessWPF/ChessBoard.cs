@@ -32,7 +32,7 @@ namespace ChessWPF
         public int Width { get; } = 8;
         public bool IsWhiteTurn { get; private set; } = true;
         public bool IsPromoting = false;
-        private List<(List<(int x, int y, int piece)>, (int x, int y), (int x, int y))> previousStates = new();
+        private List<(List<(int y, int x, int piece)> moves, (int x, int y) from, (int x, int y) to)> previousStates = new();
         public bool IsCheckForCurrentTeam { get; private set; }
         private int[,] _board = new int[8, 8];
         private Dictionary<(int x, int y), List<(int x, int y)>> _cachedValidMoves = new();
@@ -53,11 +53,36 @@ namespace ChessWPF
         }
         public ChessBoard(string fen) : this(ConvertFEN(fen)) { }
 
-        public (int x, int y)? GetLastMovedLocation()
+        public (int x, int y)? GetLastMovedFrom()
         {
             if (previousStates.Count > 0)
-                return previousStates.Last().Item2;
+                return previousStates.Last().from;
             return null;
+        }
+        public bool TryGetLastMovedTo(out (int x, int y) position)
+        {
+            if (previousStates.Count > 0)
+            {
+                position = previousStates.Last().to;
+                return true;
+            }
+            position = (0, 0);
+            return false;
+        }
+        public (bool wasMoved, bool wasKilled) WasPieceRemovedLastMove()
+        {
+            if (previousStates.Count > 0)
+            {
+                var state = previousStates.Last();
+                foreach(var move in state.moves)
+                {
+                    if (move.x == state.to.x && move.y == state.to.y)
+                    {
+                        return (true, GetType(move.piece) != Piece.Empty);
+                    }
+                }
+            }
+            return (false, false);
         }
         private static int[,] ConvertFEN(string fen)
         {
@@ -160,7 +185,6 @@ namespace ChessWPF
             if (IsPromoting)
             {
                 RevertToPreviousState();
-                IsPromoting = false;
             }
             capturedPiece = 0;
             if (x1 > 7 || x2 > 7 || x1 < 0 || x2 < 0 || y1 > 7 || y2 > 7 || y1 < 0 || y2 < 0)
@@ -181,60 +205,45 @@ namespace ChessWPF
                 List<(int x, int y, int piece)> changes = new();
                 changes.Add((y2, x2, _board[y2, x2]));
                 changes.Add((y1, x1, _board[y1, x1]));
-                previousStates.Add((changes, (x1, y1), (x2, y2)));
 
                 capturedPiece = _board[y2, x2];
                 _board[y2, x2] = _board[y1, x1] | (1 << 4);
                 _board[y1, x1] = 0;
 
-
-                //int piece = _board[y1, x1];
                 if (pieceType == (int)Piece.Pawn)
                 {
                     if (isWhite && y2 == 0 || !isWhite && y2 == 7)
                     {
                         IsPromoting = true;
                     }
-                    //if (isWhite && y2 == 0)
-                    //{
-                    //    //piece &= 0b11000;
-                    //    //piece |= (int)getPieceDelegate(isWhite);
-                    //}
-                    //else if (!isWhite && y2 == 7)
-                    //{
-                        
-                    //    //piece &= 0b11000;
-                    //    //piece |= (int)getPieceDelegate(isWhite);
-                    //}
                 }
+                previousStates.Add((changes, (x1, y1), (x2, y2)));
+                IsWhiteTurn = !IsWhiteTurn;
+            }
 
-                //capturedPiece = _board[y2, x2];
-                //_board[y2, x2] = piece | (1 << 4);
-                //_board[y1, x1] = 0;
+            IsCheckForCurrentTeam = IsCheckFor(IsWhiteTurn);
+            return true;
+        }
+        public void RevertToPreviousState()
+        {
+            IsPromoting = false;
+            foreach (var change in previousStates.Last().moves)
+            {
+                _board[change.y, change.x] = change.piece; 
             }
 
             IsWhiteTurn = !IsWhiteTurn;
             IsCheckForCurrentTeam = IsCheckFor(IsWhiteTurn);
-            return true;
-        }
-        private void RevertToPreviousState()
-        {
-            foreach (var state in previousStates)
-            {
-                foreach (var change in state.Item1)
-                {
-                    _board[change.y, change.x] = change.piece; 
-                }
-            }
             previousStates.RemoveAt(previousStates.Count - 1);
         }
         public bool TryPromote(Piece pieceType)
         {
             if (IsPromoting)
             {
-                var location = previousStates.Last().Item3;
+                var location = previousStates.Last().to;
                 _board[location.y, location.x] = _board[location.y, location.x] & 0b11000 | (int)pieceType;
                 IsPromoting = false;
+                IsCheckForCurrentTeam = IsCheckFor(IsWhiteTurn);
                 return true;
             }
             return false;
@@ -271,19 +280,28 @@ namespace ChessWPF
                 }
                 if (directionModifier != 0)
                 {
-                    List<int> previousState = new() { _board[y1, x1 + 2 * directionModifier], _board[y1, x1], _board[y1, x1 + 1 * directionModifier], _board[y2, x2] };
+                    List<(int x, int y, int piece)> changes = new();
+                    changes.Add((y1, x1 + 2 * directionModifier, _board[y1, x1 + 2 * directionModifier]));
+                    changes.Add((y1, x1, _board[y1, x1]));
+                    changes.Add((y1, x1 + 1 * directionModifier, _board[y1, x1 + 1 * directionModifier]));
+                    changes.Add((y2, x2, _board[y2, x2]));
+                    previousStates.Add((changes, (x1, y1), (x1 + 2 * directionModifier, y1)));
+
                     _board[y1, x1 + 2 * directionModifier] = _board[y1, x1] | (1 << 4);
                     _board[y1, x1] = 0;
                     _board[y1, x1 + 1 * directionModifier] = _board[y2, x2] | (1 << 4);
                     _board[y2, x2] = 0;
+                    IsWhiteTurn = !IsWhiteTurn;
                     if (IsCheckFor(IsWhite(piece)))
                     {
-                        _board[y1, x1 + 2 * directionModifier] = previousState[0];
-                        _board[y1, x1] = previousState[1];
-                        _board[y1, x1 + 1 * directionModifier] = previousState[2];
-                        _board[y2, x2] = previousState[3];
+                        RevertToPreviousState();
+                        //_board[y1, x1 + 2 * directionModifier] = changes[0].piece;
+                        //_board[y1, x1] = changes[1].piece;
+                        //_board[y1, x1 + 1 * directionModifier] = changes[2].piece;
+                        //_board[y2, x2] = previousState[3];
                         return false;
                     }
+
                     return true;
                 }
             }
@@ -304,7 +322,8 @@ namespace ChessWPF
                     if ((isWhite && y == 6) || (!isWhite && y == 1))
                     {
                         (int x, int y) move = (x, y + 2 * verticalDirection);
-                        if (TryGetPiece(move.x, move.y, out int targetPieceType, out _) && targetPieceType == (int)Piece.Empty)
+                        if (TryGetPiece(move.x, move.y, out int targetPieceType, out _) && targetPieceType == (int)Piece.Empty &&
+                            TryGetPiece(x, y + 1 * verticalDirection, out targetPieceType, out _) && targetPieceType == (int)Piece.Empty)
                         {
                             validMoves.Add(move);
                         };

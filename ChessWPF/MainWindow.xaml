@@ -10,7 +10,7 @@
         <Grid Name="ChessGrid" Height="500" Width="500"/>
         <DockPanel LastChildFill="False">
             <Label DockPanel.Dock="Top" FontSize="30" Name="Message" Content=""/>
-            <Label DockPanel.Dock="Top" FontSize="30" Name="IsCheck" Content=""/>
+            <Label DockPanel.Dock="Top" FontSize="30" Name="Message2" Content=""/>
             <Label DockPanel.Dock="Top" FontSize="18" Content="Captured whites:"/>
             <Grid DockPanel.Dock="Top" Height="70" x:Name="CapturedWhites">
                 <Grid.ColumnDefinitions>
@@ -67,7 +67,8 @@
                     <Image></Image>
                 </Button>
             </Grid>
-            <Button DockPanel.Dock="Bottom" Margin="10 10 10 40" Height="40" x:Name="ResetButton">Reset</Button>
+            <Button DockPanel.Dock="Bottom" Margin="10 5 10 5" Height="40" x:Name="RevertButton">Revert step</Button>
+            <Button DockPanel.Dock="Bottom" Margin="10 5 10 5" Height="40" x:Name="ResetButton">Reset</Button>
             <Grid DockPanel.Dock="Bottom" Margin="10 10 10 10" Height="40">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*"></ColumnDefinition>
