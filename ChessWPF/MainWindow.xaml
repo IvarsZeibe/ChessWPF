@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ChessWPF"
         mc:Ignorable="d"
-        Title="MainWindow" Height="550" Width="800">
+        Title="Awesome Chess" Height="550" Width="800">
     <DockPanel>
         <Grid Name="ChessGrid" Height="500" Width="500"/>
         <DockPanel LastChildFill="False">
@@ -74,7 +74,7 @@
                     <ColumnDefinition Width="3*"></ColumnDefinition>
                     <ColumnDefinition Width="7*"></ColumnDefinition>
                 </Grid.ColumnDefinitions>
-                <TextBox x:Name="FEN" Margin="10" Grid.Column="1" HorizontalContentAlignment="Stretch" FontSize="24" VerticalAlignment="Center"></TextBox>
+                <TextBox x:Name="FEN" Margin="10 0 10 0" Grid.Column="1" HorizontalContentAlignment="Stretch" FontSize="24" VerticalAlignment="Center"></TextBox>
                 <Button x:Name="LoadButton" Grid.Column="0">Load FEN</Button>
             </Grid>
         </DockPanel>
