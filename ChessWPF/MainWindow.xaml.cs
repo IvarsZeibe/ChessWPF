@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.IO;
 //using System.Diagnostics;
 
 namespace ChessWPF
@@ -32,7 +33,16 @@ namespace ChessWPF
         public MainWindow()
         {
             InitializeComponent();
-            _chessPieceTilemap = new BitmapImage(new Uri(Environment.CurrentDirectory + "/ChessPiecesArray.png"));
+
+            //_chessPieceTilemap = new BitmapImage(new Uri(Environment.CurrentDirectory + "/ChessPiecesArray.png"));
+            using (var ms = new MemoryStream(Properties.Resources.ChessPiecesArray))
+            {
+                _chessPieceTilemap = new BitmapImage();
+                _chessPieceTilemap.BeginInit();
+                _chessPieceTilemap.CacheOption = BitmapCacheOption.OnLoad;
+                _chessPieceTilemap.StreamSource = ms;
+                _chessPieceTilemap.EndInit();
+            }
             _board = new ChessBoard();
             CreateChessGrid();
             RefreshChessGrid();
